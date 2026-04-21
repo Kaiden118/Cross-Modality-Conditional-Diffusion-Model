@@ -1,0 +1,34 @@
+# =========================
+# 专为你的 T1-T2 DDPM 任务定制
+# =========================
+
+# 1. 忽略 Python 缓存
+__pycache__/
+*.py[cod]
+*$py.class
+
+# 2. 忽略模型权重和检查点 (非常重要！)
+checkpoints/
+*.pth
+*.pt
+*.ckpt
+
+# 3. 忽略运行日志和生成结果
+wandb/
+results/
+logs/
+*.log
+
+# 4. 忽略数据集 (数据集应该单独下载，不该传到代码仓)
+datasets/
+data/
+
+# 5. 忽略虚拟环境 (如果你建了的话)
+venv/
+env/
+.env
+
+# 6. 忽略 IDE 配置文件
+.vscode/
+.idea/
+.DS_Store

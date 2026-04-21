@@ -22,8 +22,8 @@ pip install -r requirements.txt
 
 ### 2. Data Preparation
 Datasets should be placed in the datasets/ directory following this structure:
-* datasets/brats19_gen_2/train/A: Contains T1 training images.
-* datasets/brats19_gen_2/train/B: Contains corresponding T2 training images.
+* datasets/your_dataset/train/A: Contains T1 training images.
+* datasets/your_dataset/train/B: Contains corresponding T2 training images.
 * Note: Filenames must correspond; the script automatically matches _t1_ and _t2_ suffixes.
 
 ### 3. Train the Model

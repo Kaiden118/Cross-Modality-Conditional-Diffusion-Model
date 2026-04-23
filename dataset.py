@@ -37,7 +37,7 @@ class PairedMRI(Dataset):
                 if t1.max() > min_intensity and t2.max() > min_intensity:
                     self.valid_pairs.append((t1_name, t2_name))
             except Exception as e:
-                print(f"跳过损坏图像 {t1_name}: {e}")
+                print(f"Skip the damaged image {t1_name}: {e}")
 
         sample_img = Image.open(os.path.join(self.t1_dir, self.valid_pairs[0][0])).convert("L")
         self.image_w, self.image_h = sample_img.size

@@ -172,9 +172,9 @@ class ResnetBlock(Module):
         dim_out, 
         *, 
         time_emb_dim=None, 
-        cond_dim=None,  # ⭐ 新增
+        cond_dim=None,  # added
         dropout=0.,
-        use_cross_attn=False  # ⭐ 新增
+        use_cross_attn=False  # added
     ):
         super().__init__()
         self.mlp = nn.Sequential(
@@ -186,7 +186,7 @@ class ResnetBlock(Module):
         self.block2 = Block(dim_out, dim_out)
         self.res_conv = nn.Conv2d(dim, dim_out, 1) if dim != dim_out else nn.Identity()
         
-        # ⭐ 新增：cross-attention
+        # cross-attention
         self.cross_attn = LinearAttention(
             dim_out, 
             context_dim=cond_dim,
@@ -194,7 +194,7 @@ class ResnetBlock(Module):
             dim_head=32
         ) if use_cross_attn else None
 
-    def forward(self, x, time_emb=None, cond=None):  # ⭐ 新增 cond 参数
+    def forward(self, x, time_emb=None, cond=None):  # Add condtional parameters
         scale_shift = None
         if exists(self.mlp) and exists(time_emb):
             time_emb = self.mlp(time_emb)
@@ -204,7 +204,7 @@ class ResnetBlock(Module):
         h = self.block1(x, scale_shift=scale_shift)
         h = self.block2(h)
         
-        # ⭐ 新增：cross-attention
+        # cross-attention
         if exists(self.cross_attn) and exists(cond):
             h = h + self.cross_attn(h, context=cond)
         
@@ -214,7 +214,7 @@ class LinearAttention(Module):
     def __init__(
         self,
         dim,
-        context_dim=None,  # ⭐ 新增
+        context_dim=None,  # added
         heads=4,
         dim_head=32,
         num_mem_kv=4
@@ -223,10 +223,10 @@ class LinearAttention(Module):
         self.scale = dim_head ** -0.5
         self.heads = heads
         hidden_dim = dim_head * heads
-        context_dim = default(context_dim, dim)  # ⭐ 新增
+        context_dim = default(context_dim, dim)  # added
 
         self.norm = RMSNorm(dim)
-        self.norm_context = RMSNorm(context_dim)  # ⭐ 新增
+        self.norm_context = RMSNorm(context_dim)  # added
 
         self.mem_kv = nn.Parameter(torch.randn(2, heads, dim_head, num_mem_kv))
         
@@ -239,15 +239,15 @@ class LinearAttention(Module):
             RMSNorm(dim)
         )
 
-    def forward(self, x, context=None):  # ⭐ 新增 context 参数
+    def forward(self, x, context=None):  # Add context parameters
         b, c, h, w = x.shape
 
         x = self.norm(x)
-        context = default(context, x)  # ⭐ 新增
-        context = self.norm_context(context)  # ⭐ 新增
+        context = default(context, x)  # added
+        context = self.norm_context(context)  # added
 
         q = self.to_q(x)
-        k, v = self.to_kv(context).chunk(2, dim=1)  # ⭐ 修改：从 context 提取 k, v
+        k, v = self.to_kv(context).chunk(2, dim=1)  # collect k, v from context
         
         q, k, v = map(lambda t: rearrange(t, 'b (h c) x y -> b h c (x y)', h=self.heads), (q, k, v))
 
@@ -310,8 +310,8 @@ class Unet(Module):
         init_dim = None,
         out_dim = None,
         dim_mults = (1, 2, 4, 8),
-        channels = 1,                 # 你的任务是单通道
-        cond_channels = 1,            # 条件也是单通道
+        channels = 1,                 # single channel
+        cond_channels = 1,            # single channel
         self_condition = False,
         learned_variance = False,
         learned_sinusoidal_cond = False,
@@ -338,7 +338,7 @@ class Unet(Module):
         init_dim = default(init_dim, dim)
         self.init_conv = nn.Conv2d(input_channels, init_dim, 7, padding = 3)
         
-        # ⭐ 新增：条件编码器
+        # conditional encoder
         self.cond_encoder = nn.Sequential(
             nn.Conv2d(cond_channels, init_dim, 7, padding=3),
             RMSNorm(init_dim),
@@ -433,24 +433,23 @@ class Unet(Module):
     def forward(self, x, time, x_cond = None, x_self_cond = None):
         assert all([divisible_by(d, self.downsample_factor) for d in x.shape[-2:]])
 
-        # 自调（如果启用）
         if self.self_condition:
             x_self_cond = default(x_self_cond, lambda: torch.zeros_like(x))
         else:
             x_self_cond = None
 
-        # ⭐ 新增：条件编码（用于 cross-attention）
+        # used for cross attention
         cond_feat = None
         if self.use_cross_attn and exists(x_cond):
             cond_feat = self.cond_encoder(x_cond)
         
-        # 条件默认全零（用于输入拼接）
+        # 0 for condition
         x_cond_input = default(x_cond, lambda: torch.zeros(
             (x.shape[0], self.cond_channels, x.shape[-2], x.shape[-1]), 
             device=x.device, dtype=x.dtype
         ))
 
-        # 拼接顺序：[x_self_cond?, x, x_cond]
+        # concat [x_self_cond?, x, x_cond]
         inputs = [x]
         if exists(x_self_cond):
             inputs = [x_self_cond] + inputs
@@ -464,7 +463,7 @@ class Unet(Module):
 
         h = []
 
-        # ⭐ 修改：Encoder 传递 cond
+        # Passing condition
         for block1, block2, attn, downsample in self.downs:
             x = block1(x, t, cond=cond_feat)
             h.append(x)
@@ -475,16 +474,16 @@ class Unet(Module):
 
             x = downsample(x)
             
-            # ⭐ 新增：下采样条件特征
+            # Downsample
             if exists(cond_feat):
                 cond_feat = F.interpolate(cond_feat, size=x.shape[-2:], mode='bilinear', align_corners=False)
 
-        # ⭐ 修改：Bottleneck 传递 cond
+        # Pass condition by Bottleneck
         x = self.mid_block1(x, t, cond=cond_feat)
         x = self.mid_attn(x) + x
         x = self.mid_block2(x, t, cond=cond_feat)
 
-        # ⭐ 修改：Decoder 传递 cond
+        # Pass condition by Decoder
         for block1, block2, attn, upsample in self.ups:
             x = torch.cat((x, h.pop()), dim=1)
             x = block1(x, t, cond=cond_feat)
@@ -495,7 +494,7 @@ class Unet(Module):
 
             x = upsample(x)
             
-            # ⭐ 新增：上采样条件特征
+            # Upsampling
             if exists(cond_feat):
                 cond_feat = F.interpolate(cond_feat, size=x.shape[-2:], mode='bilinear', align_corners=False)
 
@@ -532,11 +531,6 @@ def cosine_beta_schedule(timesteps, s = 0.008):
     return torch.clip(betas, 0, 0.999)
 
 def sigmoid_beta_schedule(timesteps, start = -3, end = 3, tau = 1, clamp_min = 1e-5):
-    """
-    sigmoid schedule
-    proposed in https://arxiv.org/abs/2212.11972 - Figure 8
-    better for images > 64x64, when used during training
-    """
     steps = timesteps + 1
     t = torch.linspace(0, timesteps, steps, dtype = torch.float64) / timesteps
     v_start = torch.tensor(start / tau).sigmoid()
@@ -569,8 +563,7 @@ class GaussianDiffusion(Module):
 
         self.immiscible = immiscible
         self.offset_noise_strength = offset_noise_strength
-        
-        # ⭐ 保存参数
+       
         self.cond_drop_prob = cond_drop_prob
 
         assert not (type(self) == GaussianDiffusion and model.channels != model.out_dim)
@@ -682,7 +675,7 @@ class GaussianDiffusion(Module):
         return self.betas.device
 
     def predict_start_from_noise(self, x_t, t, noise):
-        # 原始公式（保持不变）并增加 clamp 以防推理中数值爆炸导致输出偏亮/溢出
+        # The original formula (remains unchanged) and clamp is added to prevent numerical explosion during inference from causing the output to be too bright or overflow
         x_start = (
             extract(self.sqrt_recip_alphas_cumprod, t, x_t.shape) * x_t -
             extract(self.sqrt_recipm1_alphas_cumprod, t, x_t.shape) * noise
@@ -868,8 +861,7 @@ class GaussianDiffusion(Module):
     
     def p_losses(self, x_start, t, noise=None, x_cond=None, offset_noise_strength=None):
         """
-        改进版：加入重建与结构一致性损失，
-        以避免亮度偏差、提升组织结构保真。
+        Add reconstruction and structural consistency loss to avoid brightness deviation and enhance the fidelity of organizational structure.
         """
         b, c, h, w = x_start.shape
         noise = default(noise, lambda: torch.randn_like(x_start))
@@ -879,19 +871,19 @@ class GaussianDiffusion(Module):
             offset_noise = torch.randn(x_start.shape[:2], device=self.device)
             noise = noise + offset_noise_strength * rearrange(offset_noise, 'b c -> b c 1 1')
 
-        # 正向加噪
+        # Forward denoising
         x = self.q_sample(x_start=x_start, t=t, noise=noise)
 
-        # 条件 Drop
+        # Conditional Drop
         if x_cond is None:
             x_cond_input = torch.zeros_like(x_start)
         else:
-            drop_prob = getattr(self, 'cond_drop_prob', 0.1)  # ⭐ 降低 Drop 概率
+            drop_prob = getattr(self, 'cond_drop_prob', 0.1)
             m = (torch.rand(b, device=self.device) < drop_prob).float()
             m = rearrange(m, 'b -> b 1 1 1')
             x_cond_input = x_cond * (1. - m)
 
-        # 模型预测噪声
+        # Model prediction noise
         model_out = self.model(x, t, x_cond=x_cond_input)
 
         # 计算目标
@@ -904,21 +896,21 @@ class GaussianDiffusion(Module):
         else:
             raise ValueError(f'unknown objective {self.objective}')
 
-        # ----- 主MSE损失（预测噪声） -----
+        # ----- Main MSE loss (Predicted noise) -----
         loss = F.mse_loss(model_out, target, reduction='none')
         loss = reduce(loss, 'b ... -> b', 'mean')
         loss = loss * extract(self.loss_weight, t, loss.shape)
         base_loss = loss.mean()
 
-        # ----- 增加亮度一致性 L1损失 -----
+        # ----- Increase the L1 loss of luminance consistency -----
         x_start_hat = self.predict_start_from_noise(x, t, model_out)
         l1_loss = F.l1_loss(x_start_hat, x_start)
 
-        # ----- 增加结构相似度损失 -----
+        # ----- Increase the loss of structural similarity -----
         # 改为
         ssim_loss = 1 - ssim(x_start_hat, x_start, data_range=2)
 
-        # ----- 总损失加权组合 -----
+        # ----- Total loss weighted combination -----
         total_loss = base_loss + 0.3 * l1_loss + 0.2 * ssim_loss
 
         return total_loss
@@ -927,19 +919,14 @@ class GaussianDiffusion(Module):
         b, c, h, w, device, img_size = *img.shape, img.device, self.image_size
         assert h == img_size[0] and w == img_size[1], f'height and width of image must be {img_size}'
         t = torch.randint(0, self.num_timesteps, (b,), device=device).long()
-        # 保持与你的数据管线一致，这里不做 normalize
         return self.p_losses(img, t, x_cond=x_cond, *args, **kwargs)
     
     def cfg_model_predictions(self, x, t, x_cond=None, x_self_cond=None, cond_scale=1.0, clip_x_start=False):
-        """
-        返回与 model_predictions 同结构的 ModelPrediction，但在 eps 域做了 CFG 合成
-        注意：不对 x_cond 做 normalize，与你的数据管线一致（已在 Dataset 里归一化到 [-1,1]）
-        """
-        # 无条件或 scale=1，直接走原路径
+        # Unconditionally or with scale=1, directly follow the original path
         if (x_cond is None) or (cond_scale == 1.0):
             return self.model_predictions(x, t, x_cond=x_cond, x_self_cond=x_self_cond, clip_x_start=clip_x_start, rederive_pred_noise=False)
 
-        # 批拼接：先无条件（0），后有条件（真实 T1）
+        # Batch splicing: First unconditional (0), then conditional (true T1)
         x_in = torch.cat([x, x], dim=0)
         t_in = torch.cat([t, t], dim=0)
 
@@ -951,12 +938,12 @@ class GaussianDiffusion(Module):
         else:
             x_self_cond_in = None
 
-        # 取 eps（pred_noise）做合成
+        # Take eps (pred noise) for synthesis
         preds_both = self.model_predictions(x_in, t_in, x_cond=x_cond_in, x_self_cond=x_self_cond_in, clip_x_start=False, rederive_pred_noise=False)
         eps_uncond, eps_cond = preds_both.pred_noise.chunk(2, dim=0)
         pred_noise = eps_uncond + cond_scale * (eps_cond - eps_uncond)
 
-        # 由 eps 反推 x0
+        # Work backward from eps to x0
         x_start = self.predict_start_from_noise(x, t, pred_noise)
         if clip_x_start:
             x_start = x_start.clamp(-1., 1.)

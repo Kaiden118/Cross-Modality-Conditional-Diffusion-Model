@@ -2,7 +2,7 @@
 
 This project implements a cross-modality medical image translation framework based on the Denoising Diffusion Probabilistic Model (DDPM), specifically designed for generating T2-weighted images from corresponding T1-weighted MRI scans.
 
-<img src="./sample/figure.png" width="600px"><img>
+<img src="./sample/figure.png" width="800px"><img>
 
 ## 🌟 Core Features & Improvements
 

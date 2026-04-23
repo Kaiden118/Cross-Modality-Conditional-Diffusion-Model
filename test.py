@@ -57,15 +57,13 @@ os.makedirs(save_dir, exist_ok=True)
 
 timesteps = 1000
 cfg_scale = 1.2
-max_slices = None   # None 表示全跑
+max_slices = None
 
 transform = transforms.Compose([
     transforms.ToTensor(),
     transforms.Normalize((0.5,), (0.5,))
 ])
 
-# 注意：这里的数据集仍然必须返回成对的 t1 / t2
-# 因为你还要计算 PSNR / SSIM
 test_dataset = PairedMRI(
     "datasets/brats19_gen_2",
     phase="test",
@@ -127,8 +125,6 @@ for batch in test_loader:
     t1 = batch["t1"].to(device)
     t2 = batch["t2"].to(device)
 
-    # 尽量用输入图像原名，并在后面加 _t2
-    # 优先使用输入 T1 的原始文件名
     if "t1_name" in batch:
         in_name = batch["t1_name"][0]
     elif "filename" in batch:
@@ -141,14 +137,13 @@ for batch in test_loader:
     else:
         in_name = f"sample_{count + 1:04d}"
 
-    # 去掉扩展名
     in_name = os.path.splitext(in_name)[0]
     if in_name.endswith(".nii"):
         in_name = os.path.splitext(in_name)[0]
 
     out_name = f"{in_name}_t2.png"
 
-    # ===== 整图 T1 -> T2 生成 =====
+    # ===== The entire graph T1 -> T2 is generated =====
     pred = diffusion.sample(x_cond=t1, batch_size=1, cond_scale=cfg_scale)
 
     t2_01 = denorm01(t2)

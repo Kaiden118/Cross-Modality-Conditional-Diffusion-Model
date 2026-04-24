@@ -45,6 +45,8 @@ timesteps = 1000
 lr = 1e-4
 ```
 
+In this model, we also enable cross attention while training. However, this requires high GPU cost and long training time and limited improvements. So we recommend you keep `use_cross_attn` closed. But if you have high performance GPU, you can try to use cross attention.
+
 
 ### 4. Validation & Generation
 Use the validation script to run inference on the test set:

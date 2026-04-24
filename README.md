@@ -1,7 +1,5 @@
 # Cross-Modality Conditional Diffusion (T1 to T2 MRI)
 
-<img src="./images/model.png"><img>
-
 This project implements a cross-modality medical image translation framework based on the Denoising Diffusion Probabilistic Model (DDPM), specifically designed for generating T2-weighted images from corresponding T1-weighted MRI scans.
 
 <img src="./images/figure.png" width="800px"><img>
@@ -17,6 +15,8 @@ This project features deep customizations to the original DDPM architecture to m
     * **L1 Reconstruction Loss**: Derives the original image via `predict_start_from_noise` and calculates the pixel-level error between the predicted and ground-truth T2 images (weight 0.3).
     * **SSIM Loss**: Introduces a Structural Similarity loss to ensure the generated tissue structures visually match the real images (weight 0.2).
 * **Single-Channel Optimization**: Optimized the input/output flow specifically for single-channel (grayscale) medical images, defaulting to `channels=1`.
+
+<img src="./images/model.png"><img>
 
 ## 🚀 Quick Start
 ### 1. Install Environment

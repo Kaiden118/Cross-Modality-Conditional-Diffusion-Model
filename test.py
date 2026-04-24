@@ -10,46 +10,6 @@ from dataset import PairedMRI
 os.environ["TQDM_DISABLE"] = "1"
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
-# ---------------- PSNR ----------------
-def calc_psnr(pred, target, eps=1e-8):
-    mse = F.mse_loss(pred, target)
-    return 10 * torch.log10(1.0 / (mse + eps))
-
-# ---------------- SSIM ----------------
-def gaussian(window_size, sigma, device):
-    x = torch.arange(window_size, device=device).float()
-    gauss = torch.exp(-(x - window_size // 2) ** 2 / (2 * sigma ** 2))
-    return gauss / gauss.sum()
-
-
-def create_window(window_size, channel, device):
-    _1d = gaussian(window_size, 1.5, device).unsqueeze(1)
-    _2d = _1d @ _1d.t()
-    window = _2d.expand(channel, 1, window_size, window_size).contiguous()
-    return window
-
-
-def calc_ssim(img1, img2, window_size=11):
-    c1, c2 = 0.01 ** 2, 0.03 ** 2
-    (_, channel, _, _) = img1.size()
-    window = create_window(window_size, channel, img1.device)
-
-    mu1 = F.conv2d(img1, window, padding=window_size // 2, groups=channel)
-    mu2 = F.conv2d(img2, window, padding=window_size // 2, groups=channel)
-
-    mu1_sq, mu2_sq = mu1.pow(2), mu2.pow(2)
-    mu1_mu2 = mu1 * mu2
-
-    sigma1_sq = F.conv2d(img1 * img1, window, padding=window_size // 2, groups=channel) - mu1_sq
-    sigma2_sq = F.conv2d(img2 * img2, window, padding=window_size // 2, groups=channel) - mu2_sq
-    sigma12 = F.conv2d(img1 * img2, window, padding=window_size // 2, groups=channel) - mu1_mu2
-
-    ssim_map = ((2 * mu1_mu2 + c1) * (2 * sigma12 + c2)) / (
-        (mu1_sq + mu2_sq + c1) * (sigma1_sq + sigma2_sq + c2)
-    )
-    return ssim_map.mean()
-
-
 # ---------------- Config ----------------
 checkpoint_path = "checkpoints/ddpm_epoch.pth"
 save_dir = "results/generated"
@@ -117,8 +77,6 @@ def denorm01(x):
 
 torch.set_grad_enabled(False)
 
-psnr_total = 0.0
-ssim_total = 0.0
 count = 0
 
 for batch in test_loader:
@@ -146,29 +104,13 @@ for batch in test_loader:
     # ===== The entire graph T1 -> T2 is generated =====
     pred = diffusion.sample(x_cond=t1, batch_size=1, cond_scale=cfg_scale)
 
-    t2_01 = denorm01(t2)
     pred_01 = denorm01(pred)
-
-    psnr = calc_psnr(pred_01, t2_01)
-    ssim = calc_ssim(pred_01, t2_01)
-
-    psnr_total += psnr.item()
-    ssim_total += ssim.item()
-    count += 1
 
     save_image(pred_01, os.path.join(save_dir, out_name))
 
-    print(f"[{count}] {out_name} | PSNR {psnr:.2f} | SSIM {ssim:.4f}")
-    print(f"Current Average -> PSNR: {psnr_total / count:.2f}, SSIM: {ssim_total / count:.4f}")
+    count += 1
 
     if (max_slices is not None) and (count >= max_slices):
         break
 
-# print("\n====== FINAL RESULT ======")
-# if count > 0:
-#     print(f"Evaluated slices: {count}")
-#     print(f"Average PSNR: {psnr_total / count:.2f}")
-#     print(f"Average SSIM: {ssim_total / count:.4f}")
-# else:
-#     print("No slice was evaluated.")
 print("Done.")

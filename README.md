@@ -35,10 +35,25 @@ python train.py
 ```
 Training logs will be synced in real-time to the wandb project t1-to-t2-ddpm-whole-image.
 
+You can change the hyper-parameters here to design your own experiment.
+```bash
+epochs = 30
+batch_size = 8
+timesteps = 1000
+lr = 1e-4
+```
+
+
 ### 4. Validation & Generation
-Use the validation script to run inference on the test set and automatically calculate PSNR, SSIM, MAE and NCC metrics:
+Use the validation script to run inference on the test set:
 ```bash
 python test.py
 ```
-Generated results will be saved in the results/generated_t2 directory.
+Generated results will be saved in the results/generated directory.
 
+You can also change the cfg scale, time steps and the maximum number of image you want to generate.
+```bash
+timesteps = 1000
+cfg_scale = 1.2
+max_slices = None
+```

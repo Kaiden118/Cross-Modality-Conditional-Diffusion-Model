@@ -51,8 +51,8 @@ def calc_ssim(img1, img2, window_size=11):
 
 
 # ---------------- Config ----------------
-checkpoint_path = "checkpoints/ddpm_epoch29.pth"
-save_dir = "results/generated_t2"
+checkpoint_path = "checkpoints/ddpm_epoch.pth"
+save_dir = "results/generated"
 os.makedirs(save_dir, exist_ok=True)
 
 timesteps = 1000
@@ -164,11 +164,11 @@ for batch in test_loader:
     if (max_slices is not None) and (count >= max_slices):
         break
 
-print("\n====== FINAL RESULT ======")
-if count > 0:
-    print(f"Evaluated slices: {count}")
-    print(f"Average PSNR: {psnr_total / count:.2f}")
-    print(f"Average SSIM: {ssim_total / count:.4f}")
-else:
-    print("No slice was evaluated.")
+# print("\n====== FINAL RESULT ======")
+# if count > 0:
+#     print(f"Evaluated slices: {count}")
+#     print(f"Average PSNR: {psnr_total / count:.2f}")
+#     print(f"Average SSIM: {ssim_total / count:.4f}")
+# else:
+#     print("No slice was evaluated.")
 print("Done.")

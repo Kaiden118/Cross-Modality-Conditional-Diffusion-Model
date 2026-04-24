@@ -6,7 +6,7 @@ from torchvision import transforms
 from tqdm import tqdm
 import wandb
 from cross_modality_conditional_diffusion import Unet, GaussianDiffusion
-from dataset_t2 import PairedMRI
+from dataset import PairedMRI
 from ema_pytorch import EMA
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))

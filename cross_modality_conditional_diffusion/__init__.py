@@ -1,1 +1,1 @@
-from CMCD.cross_modality_conditional_diffusion.cross_modality_conditional_diffusion import GaussianDiffusion, Unet
+from cross_modality_conditional_diffusion.cross_modality_conditional_diffusion import GaussianDiffusion, Unet

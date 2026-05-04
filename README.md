@@ -17,7 +17,6 @@ This project features deep customizations to the original DDPM architecture to m
     * **SSIM Loss**: Introduces a Structural Similarity loss to ensure the generated tissue structures visually match the real images (weight 0.2).
 * **Single-Channel Optimization**: Optimized the input/output flow specifically for single-channel (grayscale) medical images, defaulting to `channels=1`.
 
-<img src="./images/model.png"><img>
 
 ## 🚀 Quick Start
 ### 1. Install Environment

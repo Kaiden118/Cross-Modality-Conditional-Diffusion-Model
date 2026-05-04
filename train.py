@@ -14,13 +14,18 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 # ---------------- Config ----------------
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
-epochs = 30
+epochs = 50
 batch_size = 8
 timesteps = 1000
 lr = 1e-4
 
 save_dir = "checkpoints"
 os.makedirs(save_dir, exist_ok=True)
+
+# --- Resume Training Config ---
+resume_training = True  # Set True to enable resume training
+# Set name of the path, or this will find the latest one, which is cmcd_epoch{epoch}.pth
+resume_checkpoint_path = None 
 
 # ---------------- Dataset ----------------
 transform = transforms.Compose([
@@ -29,7 +34,7 @@ transform = transforms.Compose([
 ])
 
 train_dataset = PairedMRI(
-    "datasets/brats19_gen_2",
+    "datasets/brats19_gen_2_t1",
     phase="train",
     transform=transform
 )
@@ -42,7 +47,7 @@ train_loader = DataLoader(
     pin_memory=True
 )
 
-# ---------------- Model ----------------
+# ---------------- Model (ACSG Module Core) ----------------
 unet = Unet(
     dim=128,
     channels=1,
@@ -69,24 +74,51 @@ optimizer = torch.optim.Adam(unet.parameters(), lr=lr)
 ema = EMA(unet, beta=0.995, update_every=1)
 ema.to(device)
 
+# ---------------- Resume Logic ----------------
+start_epoch = 0
+global_step = 0
+
+if resume_training:
+    if resume_checkpoint_path is None:
+        ckpt_files = [f for f in os.listdir(save_dir) if f.endswith('.pth')]
+        if ckpt_files:
+            latest_ckpt = max([os.path.join(save_dir, f) for f in ckpt_files], key=os.path.getmtime)
+            resume_checkpoint_path = latest_ckpt
+
+    if resume_checkpoint_path and os.path.exists(resume_checkpoint_path):
+        print(f"检测到历史检查点，正在从 {resume_checkpoint_path} 恢复训练...")
+        checkpoint = torch.load(resume_checkpoint_path, map_location=device)
+        
+        unet.load_state_dict(checkpoint["model"])
+        if "ema" in checkpoint:
+            ema.ema_model.load_state_dict(checkpoint["ema"])
+        
+        optimizer.load_state_dict(checkpoint["optimizer"])
+        
+        start_epoch = checkpoint["epoch"] + 1
+        global_step = start_epoch * len(train_loader)
+        print(f"Successful recovery! Training will continue from the {start_epoch} round.")
+    else:
+        print("No valid checkpoint was found. A brand-new training will start from Round 0.")
+
 # ---------------- wandb ----------------
 wandb.init(
-    project="t1-to-t2-ddpm-whole-image",
+    project="t1-to-t2-cmcd-whole-image",
     config={
         "epochs": epochs,
         "batch_size": batch_size,
         "timesteps": timesteps,
         "lr": lr,
-        "image_size": image_size
+        "image_size": image_size,
+        "resumed": resume_training
     }
 )
 wandb.watch(unet, log="all", log_freq=200)
 
 # ---------------- Training Loop ----------------
-global_step = 0
 unet.train()
 
-for epoch in range(epochs):
+for epoch in range(start_epoch, epochs):
     epoch_loss = 0.0
     pbar = tqdm(train_loader, desc=f"Epoch {epoch}")
 
@@ -117,6 +149,6 @@ for epoch in range(epochs):
         "ema": ema.ema_model.state_dict(),
         "optimizer": optimizer.state_dict(),
         "epoch": epoch
-    }, os.path.join(save_dir, f"ddpm_epoch{epoch}.pth"))
+    }, os.path.join(save_dir, f"cmcd_epoch{epoch}.pth"))
 
 wandb.finish()

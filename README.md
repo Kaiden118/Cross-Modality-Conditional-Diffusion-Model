@@ -1,6 +1,6 @@
 # Cross-Modality Conditional Diffusion (T1 & T2 MRI)
 
-This project implements a cross-modality medical image translation framework based on the Denoising Diffusion Probabilistic Model (DDPM), specifically designed for generating T2-weighted images from corresponding T1-weighted MRI scans.
+This project implements a cross-modality medical image translation framework based on the Denoising Diffusion Probabilistic Model (DDPM), specifically designed for generating between corresponding T1-weighted images and T2-weighted MRI scans.
 
 <img src="./images/Overall Flow.png" width="800px"><img>
 
@@ -27,8 +27,8 @@ pip install -r requirements.txt
 
 ### 2. Data Preparation
 Our model was trained on [BraTS2019](https://www.med.upenn.edu/cbica/brats-2019/) and [BraTS2020](https://www.med.upenn.edu/cbica/brats2020/), you can download from offical website. After that, the dataset should be normalized before transfered from `Nii.` format to `PNG`. Datasets should be placed in the datasets/ directory following this structure:
-* datasets/your_dataset/train/A: Contains T1 training images.
-* datasets/your_dataset/train/B: Contains corresponding T2 training images.
+* datasets/your_dataset/train/A: Contains condition training images.
+* datasets/your_dataset/train/B: Contains corresponding target training images.
 * Note: Filenames must correspond; the script automatically matches _t1_ and _t2_ suffixes.
 
 ### 3. Train the Model
